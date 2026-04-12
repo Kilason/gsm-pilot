@@ -1,0 +1,832 @@
+<!-- <!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Калькулятор ГСМ (Утренний отчёт)</title>
+  <style>
+    :root {
+      --bg: #121212;
+      --card: #1e1e1e;
+      --input: #2a2a2a;
+      --border: #444;
+      --text: #e0e0e0;
+      --subtext: #aaa;
+      --accent: #007bff;
+      --danger: #ff5252;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 12px;
+      line-height: 1.5;
+    }
+    h1 { font-size: 22px; text-align: center; margin-bottom: 16px; font-weight: 600; }
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    h2 { font-size: 15px; color: var(--subtext); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .btn-group { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .btn {
+      flex: 1;
+      min-width: 64px;
+      padding: 14px 8px;
+      background: var(--input);
+      border: 2px solid var(--border);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: 0.2s;
+      text-align: center;
+    }
+    .btn.active { background: var(--accent); border-color: var(--accent); }
+    .btn:active { transform: scale(0.97); }
+    .input-group { margin-bottom: 14px; }
+    label { display: block; margin-bottom: 6px; font-size: 14px; color: var(--subtext); }
+    input[type="date"], input[type="number"] {
+      width: 100%;
+      padding: 14px;
+      font-size: 17px;
+      background: var(--input);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      color: #fff;
+      min-height: 48px;
+      appearance: none;
+    }
+    input:focus { outline: none; border-color: var(--accent); }
+    .checkbox-group { display: flex; flex-direction: column; gap: 12px; }
+    .checkbox-item { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+    .checkbox-item input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent); }
+    .checkbox-item label { margin: 0; font-size: 16px; color: #fff; cursor: pointer; }
+    .result-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #333; }
+    .result-row:last-child { border-bottom: none; }
+    .result-label { color: var(--subtext); }
+    .result-value { font-weight: 600; font-size: 17px; }
+    .negative { color: var(--danger) !important; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <h1>Калькулятор ГСМ</h1>
+
+  <div class="card">
+    <div class="btn-group" id="carGroup">
+      <button class="btn active" data-car="181">181</button>
+      <button class="btn" data-car="599">599</button>
+      <button class="btn" data-car="750">750</button>
+      <button class="btn" data-car="883">883</button>
+    </div>
+    <div class="btn-group" id="seasonGroup">
+      <button class="btn active" data-season="summer">Лето</button>
+      <button class="btn" data-season="winter">Зима</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="input-group"><label>Дата</label><input type="date" id="dateInput"></div>
+    <div class="input-group"><label>Одометр: выезд (км)</label><input type="number" id="odoOut" step="0.01" inputmode="decimal"></div>
+    <div class="input-group"><label>Одометр: заезд (км)</label><input type="number" id="odoIn" step="0.01" inputmode="decimal"></div>
+    <div class="input-group"><label>Остаток топлива при выезде (л)</label><input type="number" id="fuelStart" step="0.01" inputmode="decimal"></div>
+    <div class="input-group"><label>Выдано топлива (л)</label><input type="number" id="fuelAdded" step="0.01" inputmode="decimal"></div>
+    <div class="input-group" id="engineHoursGroup"><label>Моточасы (часы)</label><input type="number" id="engineHours" step="0.01" inputmode="decimal"></div>
+    <div class="input-group"><label>Холостой ход (часы)</label><input type="number" id="idleHours" step="0.01" inputmode="decimal"></div>
+  </div>
+
+  <div class="card hidden" id="extras883">
+    <h2>Надбавки (883)</h2>
+    <div class="checkbox-group">
+      <label class="checkbox-item"><input type="checkbox" id="cargoCheck"> Груз (+1,00 л/100км)</label>
+      <label class="checkbox-item"><input type="checkbox" id="urbanCheck"> Городские условия (+0,64 л/100км)</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Результат</h2>
+    <div class="result-row"><span class="result-label">Пробег:</span><span class="result-value" id="resMileage">0,00 км</span></div>
+    <div class="result-row"><span class="result-label">Норма (итого):</span><span class="result-value" id="resNorm">0,00 л/100км</span></div>
+    <div class="result-row"><span class="result-label">Расход (пробег):</span><span class="result-value" id="resMileageCons">0,00 л</span></div>
+    <div class="result-row" id="rowEngineCons"><span class="result-label">Расход (моточасы):</span><span class="result-value" id="resEngineCons">0,00 л</span></div>
+    <div class="result-row"><span class="result-label">Расход (холостой ход):</span><span class="result-value" id="resIdleCons">0,00 л</span></div>
+    <div class="result-row"><span class="result-label">Общий расход:</span><span class="result-value" id="resTotalCons">0,00 л</span></div>
+    <div class="result-row"><span class="result-label">Остаток:</span><span class="result-value" id="resRemainder">0 л</span></div>
+  </div>
+
+  <script>
+    const norms = {
+      '181': { summer: { base: 34.30, mch: 5.0, idle: 2.44 }, winter: { base: 39.10, mch: 5.0, idle: 2.744 } },
+      '599': { summer: { base: 29.10, mch: 6.0, idle: 2.38 }, winter: { base: 33.17, mch: 6.0, idle: 2.328 } },
+      '750': { summer: { base: 43.20, mch: 6.0, idle: 3.20 }, winter: { base: 48.80, mch: 6.0, idle: 3.20 } },
+      '883': { summer: { base: 14.51, mch: 0, idle: 1.00 }, winter: { base: 17.08, mch: 0, idle: 1.00 } }
+    };
+
+    const $ = id => document.getElementById(id);
+    let selectedCar = '181';
+    let selectedSeason = 'summer';
+
+    $('dateInput').valueAsDate = new Date();
+
+    const fmt = n => n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function calculate() {
+      const odoOut = parseFloat($('odoOut').value) || 0;
+      const odoIn = parseFloat($('odoIn').value) || 0;
+      const fuelStart = parseFloat($('fuelStart').value) || 0;
+      const fuelAdded = parseFloat($('fuelAdded').value) || 0;
+      const engineHours = parseFloat($('engineHours').value) || 0;
+      const idleHours = parseFloat($('idleHours').value) || 0;
+      const cargo = $('cargoCheck').checked;
+      const urban = $('urbanCheck').checked;
+
+      const mileage = Math.max(0, odoIn - odoOut);
+      const normBase = norms[selectedCar][selectedSeason].base;
+      const normMch = norms[selectedCar][selectedSeason].mch;
+      const normIdle = norms[selectedCar][selectedSeason].idle;
+
+      let normTotal = normBase;
+      if (selectedCar === '883') {
+        if (cargo) normTotal += 1.00;
+        if (urban) normTotal += 0.64;
+      }
+
+      const consMileage = (mileage / 100) * normTotal;
+      const consEngine = engineHours * normMch;
+      const consIdle = idleHours * normIdle;
+      const totalCons = consMileage + consEngine + consIdle;
+      const rawRem = (fuelStart + fuelAdded) - totalCons;
+      const remInt = (rawRem - Math.floor(rawRem)) >= 0.5 ? Math.ceil(rawRem) : Math.floor(rawRem);
+
+      $('resMileage').textContent = fmt(mileage) + ' км';
+      $('resNorm').textContent = fmt(normTotal) + ' л/100км';
+      $('resMileageCons').textContent = fmt(consMileage) + ' л';
+      $('resEngineCons').textContent = fmt(consEngine) + ' л';
+      $('resIdleCons').textContent = fmt(consIdle) + ' л';
+      $('resTotalCons').textContent = fmt(totalCons) + ' л';
+      
+      const remEl = $('resRemainder');
+      remEl.textContent = Math.round(rawRem).toLocaleString('ru-RU') === rawRem.toLocaleString('ru-RU', {minimumFractionDigits:0, maximumFractionDigits:0}) 
+        ? remInt.toLocaleString('ru-RU') + ' л' 
+        : fmt(rawRem) + ' л'; // Fallback for display consistency, though spec says integer rounding
+      remEl.textContent = remInt.toLocaleString('ru-RU') + ' л';
+      remEl.classList.toggle('negative', remInt < 0);
+    }
+
+    function toggleUI() {
+      const is883 = selectedCar === '883';
+      $('extras883').classList.toggle('hidden', !is883);
+      $('engineHoursGroup').classList.toggle('hidden', is883);
+      $('rowEngineCons').classList.toggle('hidden', is883);
+      if (is883) $('engineHours').value = '';
+      calculate();
+    }
+
+    document.querySelectorAll('#carGroup .btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#carGroup .btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedCar = btn.dataset.car;
+        toggleUI();
+      });
+    });
+
+    document.querySelectorAll('#seasonGroup .btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#seasonGroup .btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedSeason = btn.dataset.season;
+        calculate();
+      });
+    });
+
+    ['odoOut', 'odoIn', 'fuelStart', 'fuelAdded', 'engineHours', 'idleHours'].forEach(id => {
+      $(id).addEventListener('input', calculate);
+    });
+    $('cargoCheck').addEventListener('change', calculate);
+    $('urbanCheck').addEventListener('change', calculate);
+
+    toggleUI();
+  </script>
+</body>
+</html> -->
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f0f1a">
+    <title>ГСМ Калькулятор</title>
+    <style>
+        :root {
+            --bg: #0f0f1a;
+            --surface: #1a1a2e;
+            --surface-elev: #252542;
+            --primary: #7c4dff;
+            --primary-glow: rgba(124, 77, 255, 0.4);
+            --success: #00e676;
+            --warning: #ffab40;
+            --error: #ff5252;
+            --text: #ffffff;
+            --text-dim: #b0b0c0;
+            --text-muted: #707085;
+            --border: rgba(255,255,255,0.08);
+            --input-bg: rgba(255,255,255,0.06);
+            --shadow: 0 8px 30px rgba(0,0,0,0.4);
+            --radius: 20px;
+            --radius-sm: 14px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px 16px 30px;
+            line-height: 1.5;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            text-align: center;
+            padding: 24px 16px 20px;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--surface), var(--surface-elev));
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(124,77,255,0.15) 0%, transparent 60%);
+            animation: pulse 8s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .header h1 {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            position: relative;
+            background: linear-gradient(135deg, #fff, #b8a9ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header .date {
+            font-size: 13px;
+            color: var(--text-dim);
+            margin-top: 4px;
+            position: relative;
+        }
+
+        /* ===== CARDS ===== */
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+        }
+
+        .card-title {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title::before {
+            content: '';
+            width: 3px;
+            height: 16px;
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn-group {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .btn-group-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .btn {
+            padding: 14px 10px;
+            background: var(--input-bg);
+            border: 2px solid transparent;
+            border-radius: 14px;
+            color: var(--text-dim);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(124,77,255,0.2), transparent);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover::after { opacity: 1; }
+
+        .btn:active { transform: scale(0.97); }
+
+        .btn.active {
+            background: linear-gradient(135deg, var(--primary), #5e35b1);
+            color: white;
+            border-color: rgba(255,255,255,0.3);
+            box-shadow: 0 4px 20px var(--primary-glow);
+        }
+
+        .btn.active::after { display: none; }
+
+        @media (max-width: 420px) {
+            .btn-group { grid-template-columns: repeat(2, 1fr); }
+            .btn { padding: 12px 8px; font-size: 13px; }
+        }
+
+        /* ===== FORM ===== */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .form-group { margin-bottom: 16px; }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--input-bg);
+            border: 2px solid var(--border);
+            border-radius: 14px;
+            color: var(--text);
+            font-size: 18px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(124,77,255,0.1);
+            box-shadow: 0 0 0 4px rgba(124,77,255,0.15);
+        }
+
+        .form-group input::placeholder { color: var(--text-muted); }
+
+        /* ===== CHECKBOXES ===== */
+        .checkbox {
+            display: flex;
+            align-items: center;
+            padding: 12px 14px;
+            background: var(--input-bg);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checkbox:hover {
+            border-color: var(--primary);
+            background: rgba(124,77,255,0.08);
+        }
+
+        .checkbox input {
+            width: 22px;
+            height: 22px;
+            margin-right: 12px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .checkbox span {
+            font-size: 14px;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        /* ===== RESULTS ===== */
+        .results {
+            background: linear-gradient(135deg, rgba(124,77,255,0.12), rgba(0,230,118,0.08));
+            border: 2px solid rgba(124,77,255,0.4);
+            border-radius: var(--radius);
+            padding: 22px;
+            margin-top: 8px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px dashed var(--border);
+        }
+
+        .result-row:last-child {
+            border-bottom: none;
+            padding-top: 14px;
+            margin-top: 8px;
+            border-top: 2px solid rgba(124,77,255,0.5);
+        }
+
+        .res-label {
+            font-size: 13px;
+            color: var(--text-dim);
+            font-weight: 500;
+        }
+
+        .res-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .res-value.highlight {
+            color: var(--success);
+            font-size: 24px;
+            text-shadow: 0 0 20px rgba(0,230,118,0.3);
+        }
+
+        .res-value.error {
+            color: var(--error);
+            animation: shake 0.4s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+
+        .res-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* ===== HINTS ===== */
+        .hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.04);
+            padding: 10px 14px;
+            border-radius: 10px;
+            margin-top: 12px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .hidden { display: none !important; }
+
+        /* ===== FOOTER ===== */
+        .footer-note {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 20px;
+            padding: 12px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>⛽ ГСМ Калькулятор</h1>
+        <div class="date" id="currentDate"></div>
+    </div>
+
+    <!-- Авто -->
+    <div class="card">
+        <div class="card-title">Автомобиль</div>
+        <div class="btn-group">
+            <button class="btn active" data-car="181">КМУ 181</button>
+            <button class="btn" data-car="599">АГП 599</button>
+            <button class="btn" data-car="750">АГП 750</button>
+            <button class="btn" data-car="883">ГАЗ 883</button>
+        </div>
+        <div class="hint" id="normHint">М/Ч: 5 л/ч • Х.Х: 2,44 л/ч</div>
+    </div>
+
+    <!-- Сезон -->
+    <div class="card">
+        <div class="card-title">Сезон</div>
+        <div class="btn-group btn-group-2">
+            <button class="btn active" data-season="summer">☀️ Лето</button>
+            <button class="btn" data-season="winter">❄️ Зима</button>
+        </div>
+    </div>
+
+    <!-- Данные -->
+    <div class="card">
+        <div class="card-title">Путевой лист</div>
+        
+        <div class="form-group">
+            <label>Дата</label>
+            <input type="date" id="dateInput">
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Одометр: старт</label>
+                <input type="number" id="odoStart" placeholder="0" inputmode="decimal">
+            </div>
+            <div class="form-group">
+                <label>Одометр: финиш</label>
+                <input type="number" id="odoEnd" placeholder="0" inputmode="decimal">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Остаток: начало (л)</label>
+                <input type="number" id="fuelStart" placeholder="0.0" inputmode="decimal">
+            </div>
+            <div class="form-group">
+                <label>Выдано (л)</label>
+                <input type="number" id="fuelIssued" placeholder="0.0" inputmode="decimal">
+            </div>
+        </div>
+
+        <div class="form-row" id="motoRow">
+            <div class="form-group">
+                <label>Моточасы (ч)</label>
+                <input type="number" id="motoHours" placeholder="0.0" inputmode="decimal">
+            </div>
+            <div class="form-group">
+                <label>Холостой ход (ч)</label>
+                <input type="number" id="idleHours" placeholder="0.0" inputmode="decimal">
+            </div>
+        </div>
+
+        <!-- Только для 883 -->
+        <div id="gazoExtras" class="hidden">
+            <div class="checkbox">
+                <input type="checkbox" id="checkCargo">
+                <span>📦 Груз (+1,00 л/100км)</span>
+            </div>
+            <div class="checkbox">
+                <input type="checkbox" id="checkCity">
+                <span>🏙️ Город (+0,64 л/100км)</span>
+            </div>
+            <div class="hint">Для ГАЗ 883 моточасы не учитываются</div>
+        </div>
+    </div>
+
+    <!-- Результаты -->
+    <div class="card results hidden" id="resultsCard">
+        <div class="card-title" style="color:var(--primary)">📊 Расчёт</div>
+        
+        <div class="result-row">
+            <span class="res-label">Пробег</span>
+            <span class="res-value" id="resMileage">0,0 км</span>
+        </div>
+        
+        <div class="result-row">
+            <span class="res-label">Норма</span>
+            <span class="res-value" id="resNorm">0,00 л/100км</span>
+        </div>
+
+        <div class="result-row">
+            <span class="res-label">На пробег</span>
+            <span class="res-value" id="resTravel">0,0 л</span>
+        </div>
+
+        <div class="result-row hidden" id="motoResultRow">
+            <span class="res-label">На моточасы</span>
+            <span class="res-value" id="resMoto">0,0 л</span>
+        </div>
+
+        <div class="result-row">
+            <span class="res-label">На холостой ход</span>
+            <span class="res-value" id="resIdle">0,0 л</span>
+        </div>
+
+        <div class="result-row">
+            <span class="res-label">🔥 Всего расход</span>
+            <span class="res-value" id="resTotal">0,0 л</span>
+        </div>
+
+        <div class="result-row">
+            <span class="res-label">💰 Остаток при заезде</span>
+            <span class="res-value highlight" id="resRemainder">0,0 л</span>
+        </div>
+    </div>
+
+    <div class="footer-note">Все расчёты выполняются локально • Данные не сохраняются</div>
+
+    <script>
+        // ===== НОРМЫ (строго по ТЗ) =====
+        const norms = {
+            '181': {
+                summer: { base: 34.3, moto: 5.0, idle: 2.44 },
+                winter: { base: 39.10, moto: 5.0, idle: 2.744 }
+            },
+            '599': {
+                summer: { base: 29.10, moto: 6.0, idle: 2.38 },
+                winter: { base: 33.17, moto: 6.0, idle: 2.328 }
+            },
+            '750': {
+                summer: { base: 43.20, moto: 6.0, idle: 3.2 },
+                winter: { base: 48.80, moto: 6.0, idle: 3.2 }
+            },
+            '883': {
+                summer: { base: 14.51, moto: 0, idle: 1.0, cargo: 1.0, city: 0.64 },
+                winter: { base: 17.08, moto: 0, idle: 1.0, cargo: 1.0, city: 0.64 }
+            }
+        };
+
+        let car = '181', season = 'summer';
+
+        // ===== INIT =====
+        document.getElementById('dateInput').valueAsDate = new Date();
+        document.getElementById('currentDate').textContent = new Date().toLocaleDateString('ru-RU', { 
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+        });
+
+        // ===== EVENTS =====
+        document.querySelectorAll('[data-car]').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('[data-car]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                car = btn.dataset.car;
+                updateUI();
+                calc();
+            };
+        });
+
+        document.querySelectorAll('[data-season]').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('[data-season]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                season = btn.dataset.season;
+                updateHint();
+                calc();
+            };
+        });
+
+        document.querySelectorAll('input').forEach(inp => inp.oninput = calc);
+        document.querySelectorAll('#gazoExtras input[type="checkbox"]').forEach(cb => cb.onchange = calc);
+
+        // ===== UI UPDATES =====
+        function updateUI() {
+            const motoRow = document.getElementById('motoRow');
+            const gazoExtras = document.getElementById('gazoExtras');
+            const motoResult = document.getElementById('motoResultRow');
+            
+            if (car === '883') {
+                motoRow.classList.add('hidden');
+                gazoExtras.classList.remove('hidden');
+                motoResult.classList.add('hidden');
+                document.getElementById('motoHours').value = '';
+            } else {
+                motoRow.classList.remove('hidden');
+                gazoExtras.classList.add('hidden');
+                motoResult.classList.remove('hidden');
+                document.getElementById('checkCargo').checked = false;
+                document.getElementById('checkCity').checked = false;
+            }
+            updateHint();
+        }
+
+        function updateHint() {
+            const n = norms[car][season];
+            const hint = document.getElementById('normHint');
+            
+            if (car === '883') {
+                hint.textContent = `База: ${n.base} • Х.Х: ${n.idle} • Груз: +1,00 • Город: +0,64`;
+            } else {
+                hint.textContent = `База: ${n.base} • М/Ч: ${n.moto} л/ч • Х.Х: ${n.idle} л/ч`;
+            }
+        }
+
+        function fmt1(v) { return v.toFixed(1).replace('.',','); }
+        function fmt2(v) { return v.toFixed(2).replace('.',','); }
+
+        // ===== CALCULATION =====
+        function calc() {
+            const oS = +document.getElementById('odoStart').value || 0;
+            const oE = +document.getElementById('odoEnd').value || 0;
+            const fS = +document.getElementById('fuelStart').value || 0;
+            const fI = +document.getElementById('fuelIssued').value || 0;
+            const mH = (car === '883') ? 0 : (+document.getElementById('motoHours').value || 0);
+            const iH = +document.getElementById('idleHours').value || 0;
+            const cargo = document.getElementById('checkCargo').checked;
+            const city = document.getElementById('checkCity').checked;
+
+            const mileage = Math.max(0, oE - oS);
+            const n = norms[car][season];
+            
+            let norm = n.base;
+            if (car === '883') {
+                if (cargo) norm += n.cargo;
+                if (city) norm += n.city;
+            }
+
+            const fuelTravel = (mileage / 100) * norm;
+            const fuelMoto = mH * n.moto;
+            const fuelIdle = iH * n.idle;
+            const total = fuelTravel + fuelMoto + fuelIdle;
+            const remainderRaw = (fS + fI) - total;
+
+            // Округление: >=0.5 → вверх, <0.5 → вниз
+            const remainder = remainderRaw >= 0 
+                ? Math.floor(remainderRaw + 0.5) 
+                : Math.ceil(remainderRaw - 0.5);
+
+            // ===== RENDER =====
+            document.getElementById('resMileage').textContent = fmt1(mileage) + ' км';
+            document.getElementById('resNorm').textContent = fmt2(norm) + ' л/100км';
+            document.getElementById('resTravel').textContent = fmt1(fuelTravel) + ' л';
+            
+            if (car !== '883') {
+                document.getElementById('resMoto').textContent = fmt1(fuelMoto) + ' л';
+            }
+            
+            document.getElementById('resIdle').textContent = fmt1(fuelIdle) + ' л';
+            document.getElementById('resTotal').textContent = fmt1(total) + ' л';
+            
+            const remEl = document.getElementById('resRemainder');
+            remEl.textContent = remainder + ' л';
+            
+            if (remainder < 0) {
+                remEl.className = 'res-value error';
+            } else {
+                remEl.className = 'res-value highlight';
+            }
+
+            document.getElementById('resultsCard').classList.remove('hidden');
+        }
+
+        // Init
+        updateUI();
+        calc();
+    </script>
+</body>
+</html>
