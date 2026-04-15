@@ -4,5 +4,7 @@ venv/
 env/ 
 ENV/ 
  
-# Excel files 
-*.xlsx
+# Excel, Python 
+*.xlsx 
+*.py 
+*.txt
